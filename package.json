@@ -25,8 +25,12 @@
                 "title": "Azure Search Add Connection"
             },
             {
-                "command": "extension.makeTestConnection",
-                "title": "Azure Search Test Connection"
+              "command": "extension.listIndexes",
+              "title": "Azure Search List Indexes"
+            },
+            {
+              "command": "extension.searchWholeIndex",
+              "title": "Azure Search Search Index"
             }
         ]
     },

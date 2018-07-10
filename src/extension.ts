@@ -6,7 +6,6 @@ import * as HttpClient from 'typed-rest-client/HttpClient';
 
 let connection = {
     url: '',
-    index: '',
     apikey: ''
 };
 
@@ -30,14 +29,18 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage('Successfully added Azure Search connection');
     });
 
-    let makeTestConnectionCommand = vscode.commands.registerCommand('extension.makeTestConnection', () => {
-        makeTestConnection();
+    let listIndexesCommand = vscode.commands.registerCommand('extension.listIndexes', () => {
+        listIndexes();
     });
 
+    let searchWholeIndexCommand = vscode.commands.registerCommand('extension.searchWholeIndex', () => {
+        searchWholeIndex();
+    });
+
+    context.subscriptions.push(listIndexesCommand);
     context.subscriptions.push(sayHelloCommand);
     context.subscriptions.push(addSearchConnectionCommand);
-    context.subscriptions.push(makeTestConnectionCommand);
-
+    context.subscriptions.push(searchWholeIndexCommand);
 }
 
 function addConnection() {
@@ -45,12 +48,6 @@ function addConnection() {
         if (!host) {
             return;
         }
-
-        vscode.window.showInputBox({ prompt: "Index name:", placeHolder: "myindex" }).then(userName => {
-            if (!userName) {
-                return;
-            }
-
             vscode.window.showInputBox({ prompt: "Api Key:", placeHolder: "D6702A743E22F9111D284D06FAF88251" }).then(password => {
                 if (!password) {
                     return;
@@ -58,33 +55,67 @@ function addConnection() {
 
                 connection = {
                     url: host,
-                    index: userName,
                     apikey: password
                 };
 
                 console.info('Here is your connection', connection);
             });
+    });
+}
+
+function searchWholeIndex(){
+
+    vscode.window.showInputBox({ prompt: "Enter index name:", placeHolder: "real-estate" }).then(indexName => {
+        if (!indexName) {
+            return;
+        }
+
+        vscode.window.showInputBox({ prompt: "Enter search term:", placeHolder: "beautiful" }).then(searchTerm => {
+            if (!searchTerm) {
+                return;
+            }
+
+            let searchInfo = {
+                indexName: indexName,
+                searchTerm: searchTerm
+            }
+
+            let client = new HttpClient.HttpClient('');
+        
+            
+            
+
+            console.info('searchInfo', searchInfo)
+            
+            const url = "https://" + connection.url + ".search.windows.net/indexes/" + searchInfo.indexName + "/docs?api-version=2017-11-11&search=" + searchInfo.searchTerm + "&%24top=1";
+            const headers = { 'api-key': connection.apikey };
+        
+            client.get(url, headers).then(res => {
+                res.readBody().then(body => {
+                    let channel = vscode.window.createOutputChannel("search-output");
+                    channel.append(body);
+                });                
+            });
         });
     });
 }
 
-async function makeTestConnection() {
-    if(!connection.url) {
-        vscode.window.showErrorMessage("No connection has been defined");
-        return;
-    }
-
+async function listIndexes(){
     let client = new HttpClient.HttpClient('');
     
-    const url = "https://" + connection.url + ".search.windows.net/indexes/" + connection.index + "/docs?api-version=2017-11-11&search=*&%24top=1";
+    const url = "https://" + connection.url + ".search.windows.net/indexes?api-version=2017-11-11";
     const headers = { 'api-key': connection.apikey };
 
     let res: HttpClient.HttpClientResponse = await client.get(url, headers);
-    let body: string = await res.readBody();
-    
-    console.info('*** OUTPUT ***');
-    console.info('Status', res.message.statusCode);
-    console.info(body);
+    let body = await res.readBody();
+
+    let json = JSON.parse(body);
+
+    if(json && json.value){
+        json.value.forEach((index: any) => {
+            console.info(index.name)
+        })
+    }
 }
 
 // this method is called when your extension is deactivated
