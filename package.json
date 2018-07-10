@@ -19,6 +19,14 @@
             {
                 "command": "extension.sayHello",
                 "title": "Hello World"
+            },
+            {
+                "command": "extension.addSearchConnection",
+                "title": "Azure Search Add Connection"
+            },
+            {
+                "command": "extension.makeTestConnection",
+                "title": "Azure Search Test Connection"
             }
         ]
     },
@@ -35,5 +43,8 @@
         "tslint": "^5.8.0",
         "@types/node": "^7.0.43",
         "@types/mocha": "^2.2.42"
+    },
+    "dependencies": {
+        "typed-rest-client": "^1.0.7"
     }
 }
