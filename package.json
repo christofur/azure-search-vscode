@@ -11,15 +11,11 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:extension.sayHello"
+        "onCommand:extension.addSearchConnection"
     ],
     "main": "./out/extension",
     "contributes": {
         "commands": [
-            {
-                "command": "extension.sayHello",
-                "title": "Hello World"
-            },
             {
                 "command": "extension.addSearchConnection",
                 "title": "Azure Search Add Connection"

@@ -1,28 +1,37 @@
 'use strict';
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import * as HttpClient from 'typed-rest-client/HttpClient';
+import * as clientlib from 'typed-rest-client/HttpClient';
 
 let connection = {
     url: '',
-    apikey: ''
+    apikey: '',
+    scheme: 'https://',
+    host: '.search.windows.net/',
+    apiVersion: 'api-version=2017-11-11'
 };
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
+let headers = {
+    'api-key': ''
+};
+
+const commands = {
+    indexes: 'indexes'
+};
+
+const urlParts = {
+    querystringStart: '?',
+    querystringAppend: '&'
+};
+
+
+let client: clientlib.HttpClient;
+let outputChannel: vscode.OutputChannel;
+
 export function activate(context: vscode.ExtensionContext) {
 
-    // Use the console to output diagnostic information (console.log) and errors (console.error)
-    // This line of code will only be executed once when your extension is activated
-    console.log('Congratulations, your extension "azure-search-for-vscode" is now active!');
-
-    // The command has been defined in the package.json file
-    // Now provide the implementation of the command with  registerCommand
-    // The commandId parameter must match the command field in package.json
-    let sayHelloCommand = vscode.commands.registerCommand('extension.sayHello', () => {
-        vscode.window.showInformationMessage('Hello World!');
-    });
+    //Setup
+    outputChannel = vscode.window.createOutputChannel("Azure Search");
+    client = new clientlib.HttpClient('');
 
     let addSearchConnectionCommand = vscode.commands.registerCommand('extension.addSearchConnection', () => {
         addConnection();
@@ -38,32 +47,38 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(listIndexesCommand);
-    context.subscriptions.push(sayHelloCommand);
     context.subscriptions.push(addSearchConnectionCommand);
     context.subscriptions.push(searchWholeIndexCommand);
 }
+
 
 function addConnection() {
     vscode.window.showInputBox({ prompt: "Enter your server name:", placeHolder: "https://acmecompany.search.windows.net" }).then(host => {
         if (!host) {
             return;
         }
-            vscode.window.showInputBox({ prompt: "Api Key:", placeHolder: "D6702A743E22F9111D284D06FAF88251" }).then(password => {
-                if (!password) {
+            vscode.window.showInputBox({ prompt: "Api Key:", placeHolder: "D6702A743E22F9111D284D06FAF88251" }).then(apiKey => {
+                if (!apiKey) {
                     return;
                 }
 
-                connection = {
-                    url: host,
-                    apikey: password
-                };
-
-                console.info('Here is your connection', connection);
+                connection.url = host;
+                connection.apikey = apiKey;
+                outputChannel.appendLine('Connection added for host ' + host);
             });
     });
 }
 
+function checkForConnection(){
+    if(!connection || !connection.host || !connection.apikey){
+        throw new Error("Connection not found - please use Add Connection command to add a connection");
+    }
+
+}
+
 function searchWholeIndex(){
+
+    checkForConnection();
 
     vscode.window.showInputBox({ prompt: "Enter index name:", placeHolder: "real-estate" }).then(indexName => {
         if (!indexName) {
@@ -80,20 +95,11 @@ function searchWholeIndex(){
                 searchTerm: searchTerm
             }
 
-            let client = new HttpClient.HttpClient('');
-        
-            
-            
-
-            console.info('searchInfo', searchInfo)
-            
             const url = "https://" + connection.url + ".search.windows.net/indexes/" + searchInfo.indexName + "/docs?api-version=2017-11-11&search=" + searchInfo.searchTerm + "&%24top=1";
-            const headers = { 'api-key': connection.apikey };
         
             client.get(url, headers).then(res => {
                 res.readBody().then(body => {
-                    let channel = vscode.window.createOutputChannel("search-output");
-                    channel.append(body);
+                    outputChannel.append(body);
                 });                
             });
         });
@@ -101,21 +107,37 @@ function searchWholeIndex(){
 }
 
 async function listIndexes(){
-    let client = new HttpClient.HttpClient('');
     
-    const url = "https://" + connection.url + ".search.windows.net/indexes?api-version=2017-11-11";
-    const headers = { 'api-key': connection.apikey };
+    checkForConnection();
 
-    let res: HttpClient.HttpClientResponse = await client.get(url, headers);
-    let body = await res.readBody();
+    const url = buildUrl(commands.indexes);
 
-    let json = JSON.parse(body);
+    let json = await apiGetJson(url);
+
+    // let res: clientlib.HttpClientResponse = await securedGet(url);
+    // let body = await res.readBody();
+
+    // let json = JSON.parse(body);
 
     if(json && json.value){
         json.value.forEach((index: any) => {
-            console.info(index.name)
-        })
+            outputChannel.appendLine(index.name);
+        });
     }
+}
+
+function buildUrl(command: string){
+    return connection.scheme + connection.url + connection.host + command + urlParts.querystringStart + connection.apiVersion;
+}
+
+async function apiGetJson(url: string){
+    let res: clientlib.HttpClientResponse = await securedGet(url);
+    let body = await res.readBody();
+    return JSON.parse(body);
+}
+
+async function securedGet(url: string){
+    return client.get(url, headers);
 }
 
 // this method is called when your extension is deactivated
